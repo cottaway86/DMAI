@@ -16,7 +16,13 @@ pip install fastapi uvicorn anthropic
 export ANTHROPIC_API_KEY="your-api-key"
 ```
 
-### 3. Start the server
+### 3. Activate virtural environment
+
+```
+source venv/bin/activate
+```
+
+### 4. Start the server
 
 ```bash
 cd backend
