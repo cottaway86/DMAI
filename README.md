@@ -16,7 +16,7 @@ pip install fastapi uvicorn anthropic
 export ANTHROPIC_API_KEY="your-api-key"
 ```
 
-### 3. Activate virtural environment
+### 3. Activate virtual environment
 
 ```
 source venv/bin/activate
@@ -31,7 +31,7 @@ uvicorn main:app --reload
 
 The API will be running at `http://127.0.0.1:8000`.
 
-### 4. Explore the docs
+### 5. Explore the docs
 
 Open `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
 
@@ -83,57 +83,65 @@ backend/
 
 ---
 
-## Alpaca Market Data Setup
+## Financial Modeling Prep (FMP) API Setup
 
-[Alpaca](https://alpaca.markets) is used as the market data provider for news, quotes, and bars.
+[Financial Modeling Prep](https://financialmodelingprep.com/developer/docs) is used as the market data provider for company profiles, news, quotes, and historical data.
 
-### 1. Get your keys
+### 1. Create an FMP account
 
-Sign up at `https://alpaca.markets` and retrieve your keys from the dashboard:
+Sign up at `https://financialmodelingprep.com` and generate your API key.
 
-- **API Key ID** — e.g. `PKXXXXXXXXXXXXXXXX`
-- **Secret Key** — e.g. `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
-
-### 2. Set environment variables
-
-```bash
-export ALPACA_API_KEY="your-api-key-id"
-export ALPACA_SECRET_KEY="your-secret-key"
+### Source environment variable bash
+```
+set -a
+source .env
+set +a
 ```
 
-### 3. Base URLs
+### 2. Set environment variable
 
-| Data type | Base URL |
-|-----------|----------|
-| Market data (stocks) | `https://data.alpaca.markets` |
-| Trading / account | `https://api.alpaca.markets` |
-| Paper trading | `https://paper-api.alpaca.markets` |
+```bash
+export FMP_API_KEY="your-fmp-api-key"
+```
+
+### 3. Base URL
+
+Use this base URL for all requests:
+
+`https://financialmodelingprep.com/stable`
 
 ### 4. Sample curl requests
 
-**Get latest news for a ticker:**
+**Get company profile:**
 ```bash
-curl -X GET "https://data.alpaca.markets/v1beta1/news?symbols=NVDA&limit=5" \
-  -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
-  -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY"
+curl "https://financialmodelingprep.com/stable/profile?symbol=NVDA&apikey=$FMP_API_KEY"
 ```
 
-**Get latest quote for a ticker:**
+**Get latest quote:**
 ```bash
-curl -X GET "https://data.alpaca.markets/v2/stocks/NVDA/quotes/latest" \
-  -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
-  -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY"
+curl "https://financialmodelingprep.com/stable/quote?symbol=NVDA&apikey=$FMP_API_KEY"
 ```
 
-**Get daily bars (OHLCV) for a ticker:**
+**Get recent stock news:**
 ```bash
-curl -X GET "https://data.alpaca.markets/v2/stocks/NVDA/bars?timeframe=1Day&limit=10" \
-  -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" \
-  -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY"
+curl "https://financialmodelingprep.com/stable/news/stock?symbols=NVDA&limit=5&apikey=$FMP_API_KEY"
 ```
 
-### 5. Install the Python SDK (optional)
-
+**Get historical daily prices:**
 ```bash
-pip install alpaca-py
+curl "https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=NVDA&apikey=$FMP_API_KEY"
 ```
+
+### 5. Optional Python integration
+
+```python
+import os
+import requests
+
+api_key = os.getenv("FMP_API_KEY")
+url = f"https://financialmodelingprep.com/stable/profile?symbol=NVDA&apikey={api_key}"
+data = requests.get(url, timeout=10).json()
+print(data)
+```
+
+> Note: current agent methods such as `fetch_news` are placeholders. Wire those methods to FMP endpoints when you implement market data ingestion.

@@ -1,5 +1,8 @@
 from fastapi import FastAPI
-from app.routers import watchlist
+from app.logging_config import setup_logging
+from app.routers import market_data, watchlist
+
+setup_logging()
 
 app = FastAPI(
     title="AlphaForge API",
@@ -9,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(watchlist.router)
+app.include_router(market_data.router)
 
 
 @app.get("/")
