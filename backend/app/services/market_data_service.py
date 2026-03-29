@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from app.models.market_data import CompanyProfile, StockQuote, StockSnapshot
+from app.services.cache_db import get_cached_snapshot, save_snapshot
 
 
 FMP_BASE_URL = os.getenv(
@@ -108,6 +109,10 @@ def get_stock_snapshot(ticker: str) -> StockSnapshot:
     symbol = ticker.strip().upper()
     logger.info("Fetching stock snapshot", extra={"ticker": symbol})
 
+    cached = get_cached_snapshot(symbol)
+    if cached is not None:
+        return cached
+
     quote = get_stock_quote(symbol)
     profile = get_company_profile(symbol)
 
@@ -133,4 +138,5 @@ def get_stock_snapshot(ticker: str) -> StockSnapshot:
         revenue_growth=revenue_growth,
     )
     logger.debug("Stock snapshot assembled", extra={"ticker": symbol})
+    save_snapshot(snapshot)
     return snapshot

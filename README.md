@@ -67,15 +67,21 @@ curl -X DELETE "http://127.0.0.1:8000/watchlist/NVDA"
 ```
 backend/
 ├── main.py                       # FastAPI app entry point
+├── data/
+│   └── alphaforge.db             # SQLite cache (created on first startup)
 ├── agents/
 │   └── market_intelligence_agent.py  # AI agent (Claude)
 └── app/
     ├── models/
     │   ├── company.py
+    │   ├── market_data.py        # StockQuote, CompanyProfile, StockSnapshot schemas
     │   └── watchlist.py          # Pydantic schemas
     ├── routers/
+    │   ├── market_data.py        # Market data API route handlers
     │   └── watchlist.py          # API route handlers
     └── services/
+        ├── cache_db.py           # SQLite cache layer
+        ├── market_data_service.py # FMP API calls + cache integration
         └── watchlist_service.py  # Business logic
 ```
 
@@ -145,3 +151,77 @@ print(data)
 ```
 
 > Note: current agent methods such as `fetch_news` are placeholders. Wire those methods to FMP endpoints when you implement market data ingestion.
+
+---
+
+## SQLite Cache
+
+Stock snapshots are cached locally in a SQLite database to avoid redundant FMP API calls. The cache is populated automatically when a snapshot endpoint is hit.
+
+### How it works
+
+1. `GET /market-data/snapshot/{ticker}` checks the local DB first
+2. If a fresh entry exists (within TTL), it is returned immediately — no FMP call made
+3. If the entry is missing or expired, FMP is called and the result is saved to the DB
+
+The DB file persists across server restarts. `init_db()` runs on startup and only creates the table if it does not already exist — existing data is never wiped.
+
+### Configuration
+
+| Env var | Default | Description |
+|---|---|---|
+| `CACHE_DB_PATH` | `backend/data/alphaforge.db` | Path to the SQLite file |
+| `SNAPSHOT_CACHE_TTL_SECONDS` | `900` | Seconds before a cached entry is considered stale (default 15 min) |
+
+Add either to your `.env` file to override:
+
+```env
+SNAPSHOT_CACHE_TTL_SECONDS=300   # 5 minutes
+CACHE_DB_PATH=/tmp/alphaforge.db
+```
+
+### Initialise the DB without starting the server
+
+The `data/` directory and `.db` file are created on first server startup. To set them up manually:
+
+```bash
+mkdir -p /Users/christine/Projects/DMAI/backend/data
+cd /Users/christine/Projects/DMAI/backend
+python -c "from app.services.cache_db import init_db; init_db()"
+```
+
+### Querying the DB directly
+
+Use the `sqlite3` CLI with the full absolute path:
+
+```bash
+sqlite3 /Users/christine/Projects/DMAI/backend/data/alphaforge.db
+```
+
+Useful queries:
+
+```sql
+-- View all cached snapshots
+SELECT * FROM stock_snapshots;
+
+-- View ticker, price, and human-readable cache time
+SELECT ticker, price, datetime(cached_at, 'unixepoch', 'localtime') AS cached_at
+FROM stock_snapshots;
+
+-- Check how old a specific ticker's cache entry is (in minutes)
+SELECT ticker, round((strftime('%s','now') - cached_at) / 60.0, 1) AS age_minutes
+FROM stock_snapshots
+WHERE ticker = 'AAPL';
+
+-- Clear the entire cache
+DELETE FROM stock_snapshots;
+
+-- Exit
+.quit
+```
+
+Or run a one-liner without entering the shell:
+
+```bash
+sqlite3 /Users/christine/Projects/DMAI/backend/data/alphaforge.db "SELECT * FROM stock_snapshots;"
+```
